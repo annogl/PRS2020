@@ -5,7 +5,8 @@ import org.apache.log4j.Logger;
 public class TwoThreadsLogs {
 
     public static Logger log = Logger.getLogger(TwoThreadsLogs.class);
-    public static Integer i = 0;
+    public static Integer i = 0; // i jako zmienna lokalna
+    public static Long jakas = 0L ;
 
     public static void main(String[] args) {
 
@@ -35,9 +36,11 @@ public class TwoThreadsLogs {
         @Override // override method from superclass
         public void run() {
             while (i <= 500) {
-                log.info("Loop " + this.loopNum + ", Read: " + i);
-                i = i + 1;
-                log.info("Loop " + this.loopNum + ", Write: " + i);
+                log.info("Loop " + this.loopNum + ", Read: " + i); // inny sposób wyświetlania system.out.println(), ale nie czeka
+                synchronized (jakas) { //synchronizowanie - czekanie jak system.out.println
+                    i = i + 1;
+                    log.info("Loop " + this.loopNum + ", Write: " + i);
+                }
             }
         }
     }
