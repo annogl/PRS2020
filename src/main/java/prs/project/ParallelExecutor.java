@@ -123,29 +123,29 @@ public class ParallelExecutor {
                     odpowiedz.setCena(0L);
             }
         }
-        if (WycenaAkcje.ZMIEN_CENE.equals(akcja.getTyp())) {
-            magazyn.getCeny().put(akcja.getProduct(), akcja.getCena());
-            odpowiedz.setProdukt(akcja.getProduct());
-            odpowiedz.setCenaZmieniona(true);
-            odpowiedz.setCena(akcja.getCena());
-        }
+//        if (WycenaAkcje.ZMIEN_CENE.equals(akcja.getTyp())) {
+//            magazyn.getCeny().put(akcja.getProduct(), akcja.getCena());
+//            odpowiedz.setProdukt(akcja.getProduct());
+//            odpowiedz.setCenaZmieniona(true);
+//            odpowiedz.setCena(akcja.getCena());
+//        }
 
         if (WydarzeniaAkcje.RAPORT_SPRZEDAŻY.equals(akcja.getTyp())) {
             odpowiedz.setRaportSprzedaży(sprzedaz);
         }
-        if (WydarzeniaAkcje.INWENTARYZACJA.equals(akcja.getTyp())) {
-            odpowiedz.setStanMagazynów(magazyn.getStanMagazynowy());
-        }
-        if (WydarzeniaAkcje.WYCOFANIE.equals(akcja.getTyp())) {
-            magazyn.getStanMagazynowy().put(akcja.getProduct(), -9999999L);
-            odpowiedz.setProdukt(akcja.getProduct());
-            odpowiedz.setZrealizowaneWycofanie(true);
-        }
-        if (WydarzeniaAkcje.PRZYWROCENIE.equals(akcja.getTyp())) {
-            magazyn.getStanMagazynowy().put(akcja.getProduct(), 0L);
-            odpowiedz.setProdukt(akcja.getProduct());
-            odpowiedz.setZrealizowanePrzywrócenie(true);
-        }
+//        if (WydarzeniaAkcje.INWENTARYZACJA.equals(akcja.getTyp())) {
+//            odpowiedz.setStanMagazynów(magazyn.getStanMagazynowy());
+//        }
+//        if (WydarzeniaAkcje.WYCOFANIE.equals(akcja.getTyp())) {
+//            magazyn.getStanMagazynowy().put(akcja.getProduct(), -9999999L);
+//            odpowiedz.setProdukt(akcja.getProduct());
+//            odpowiedz.setZrealizowaneWycofanie(true);
+//        }
+//        if (WydarzeniaAkcje.PRZYWROCENIE.equals(akcja.getTyp())) {
+//            magazyn.getStanMagazynowy().put(akcja.getProduct(), 0L);
+//            odpowiedz.setProdukt(akcja.getProduct());
+//            odpowiedz.setZrealizowanePrzywrócenie(true);
+//        }
 
         if (ZamowieniaAkcje.POJEDYNCZE_ZAMOWIENIE.equals(akcja.getTyp())) {
             odpowiedz.setProdukt(akcja.getProduct());
