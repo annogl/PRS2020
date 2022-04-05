@@ -7,7 +7,10 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +57,8 @@ public class ParallelExecutor {
     EnumMap<Product, Long> sprzedaz = new EnumMap(Product.class);
     EnumMap<Product, Long> rezerwacje = new EnumMap(Product.class);
     Long promoLicznik = 0L;
+    ReentrantLock rtLock = new ReentrantLock();
+    Lock lock;
 
     public ParallelExecutor(Settings settings, List<Akcja> akcje) {
         this.settings = settings;
@@ -148,8 +153,10 @@ public class ParallelExecutor {
 //        }
 
         if (ZamowieniaAkcje.POJEDYNCZE_ZAMOWIENIE.equals(akcja.getTyp())) {
+
             odpowiedz.setProdukt(akcja.getProduct());
             odpowiedz.setLiczba(akcja.getLiczba());
+
             Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
             if (naMagazynie >= akcja.getLiczba()) {
                 odpowiedz.setZrealizowaneZamowienie(true);
@@ -159,6 +166,7 @@ public class ParallelExecutor {
                 odpowiedz.setZrealizowaneZamowienie(false);
             }
         }
+
         if (ZamowieniaAkcje.GRUPOWE_ZAMOWIENIE.equals(akcja.getTyp())) {
             odpowiedz.setGrupaProduktów(akcja.getGrupaProduktów());
             odpowiedz.setZrealizowaneZamowienie(true);
@@ -181,7 +189,9 @@ public class ParallelExecutor {
         if (ZamowieniaAkcje.REZERWACJA.equals(akcja.getTyp())) {
             odpowiedz.setProdukt(akcja.getProduct());
             odpowiedz.setLiczba(akcja.getLiczba());
+
             Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+
             if (naMagazynie >= akcja.getLiczba()) {
                 odpowiedz.setZrealizowaneZamowienie(true);
                 magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
@@ -193,7 +203,10 @@ public class ParallelExecutor {
         if (ZamowieniaAkcje.ODBIÓR_REZERWACJI.equals(akcja.getTyp())) {
             odpowiedz.setProdukt(akcja.getProduct());
             odpowiedz.setLiczba(akcja.getLiczba());
+
             Long naMagazynie = rezerwacje.get(akcja.getProduct());
+
+
             if (naMagazynie >= akcja.getLiczba()) {
                 odpowiedz.setZrealizowaneZamowienie(true);
                 rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) - akcja.getLiczba());
