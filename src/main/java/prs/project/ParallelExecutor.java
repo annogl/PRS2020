@@ -57,6 +57,7 @@ public class ParallelExecutor {
     EnumMap<Product, Long> sprzedaz = new EnumMap(Product.class);
     EnumMap<Product, Long> rezerwacje = new EnumMap(Product.class);
     Long promoLicznik = 0L;
+
     ReentrantLock rtLock = new ReentrantLock();
     Lock lock;
 
@@ -71,17 +72,26 @@ public class ParallelExecutor {
         mojeTypy.addAll(Zaopatrzenie.valueOf(settings.getZaopatrzenie()).getAkceptowane());
         mojeTypy.addAll(Wydarzenia.valueOf(settings.getWydarzenia()).getAkceptowane());
         mojeTypy.addAll(Arrays.asList(SterowanieAkcja.values()));
+
         Thread thread = new Thread(() ->
         {
             while (active) {
-                threadProcess();
+                try {
+                    threadProcess();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         });
         thread.start();
         Thread thread2 = new Thread(() ->
         {
             while (active) {
-                threadProcess();
+                try {
+                    threadProcess();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         });
         thread2.start();
@@ -95,7 +105,7 @@ public class ParallelExecutor {
                 });
     }
 
-    public void threadProcess() {
+    public void threadProcess() throws InterruptedException {
         Akcja akcja = null;
         synchronized (this) {
             if (!kolejka.isEmpty()) {
@@ -113,14 +123,25 @@ public class ParallelExecutor {
         }
     }
 
-    private ReplyToAction procesujAkcje(Akcja akcja) {
+    private ReplyToAction procesujAkcje(Akcja akcja) throws InterruptedException {
         log.info("Procesuje " + akcja.getTyp());
         ReplyToAction odpowiedz = ReplyToAction.builder()
                 .typ(akcja.getTyp())
                 .id(akcja.getId())
                 .build();
 
-        if (WycenaAkcje.PODAJ_CENE.equals(akcja.getTyp())) {
+        //Thread podajCene = new Thread();
+        //Thread raportSprzedazy = new Thread();
+        //Thread pojedynczeZamowienie = new Thread();
+        //Thread rezerwacja = new Thread();
+        //Thread odbiorRezerwacji = new Thread();
+        //Thread pojedynczeZaopatrzenie = new Thread();
+
+
+        Thread podajCene = new Thread(() ->
+        {
+            //podajCene.start();
+            //System.out.println("wątek podaj cenę działa");
             odpowiedz.setProdukt(akcja.getProduct());
             odpowiedz.setCena(magazyn.getCeny().get(akcja.getProduct()));
             if (mojeTypy.contains(Wycena.PROMO_CO_10_WYCEN)) {
@@ -128,16 +149,36 @@ public class ParallelExecutor {
                 if (promoLicznik == 10)
                     odpowiedz.setCena(0L);
             }
+        });
+
+        if (WycenaAkcje.PODAJ_CENE.equals(akcja.getTyp())) {
+            podajCene.start();
+//            System.out.println("wątek podaj cenę działa");
+//            odpowiedz.setProdukt(akcja.getProduct());
+//            odpowiedz.setCena(magazyn.getCeny().get(akcja.getProduct()));
+//            if (mojeTypy.contains(Wycena.PROMO_CO_10_WYCEN)) {
+//                promoLicznik++;
+//                if (promoLicznik == 10)
+//                    odpowiedz.setCena(0L);
+//            }
         }
+
 //        if (WycenaAkcje.ZMIEN_CENE.equals(akcja.getTyp())) {
 //            magazyn.getCeny().put(akcja.getProduct(), akcja.getCena());
 //            odpowiedz.setProdukt(akcja.getProduct());
 //            odpowiedz.setCenaZmieniona(true);
 //            odpowiedz.setCena(akcja.getCena());
 //        }
+        Thread raportSprzedazy = new Thread(() ->
+        {
+            odpowiedz.setRaportSprzedaży(sprzedaz);
+        });
 
         if (WydarzeniaAkcje.RAPORT_SPRZEDAŻY.equals(akcja.getTyp())) {
-            odpowiedz.setRaportSprzedaży(sprzedaz);
+            raportSprzedazy.start();
+            //System.out.println("wątek raportSprzedaży działa");
+            raportSprzedazy.setPriority(10);
+            //odpowiedz.setRaportSprzedaży(sprzedaz);
         }
 //        if (WydarzeniaAkcje.INWENTARYZACJA.equals(akcja.getTyp())) {
 //            odpowiedz.setStanMagazynów(magazyn.getStanMagazynowy());
@@ -153,20 +194,39 @@ public class ParallelExecutor {
 //            odpowiedz.setZrealizowanePrzywrócenie(true);
 //        }
 
+        Thread pojedynczeZamowienie = new Thread(() ->
+        {
+            odpowiedz.setProdukt(akcja.getProduct());
+            odpowiedz.setLiczba(akcja.getLiczba());
+
+            Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+            if (naMagazynie >= akcja.getLiczba()) {
+                odpowiedz.setZrealizowaneZamowienie(true);
+                magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
+                sprzedaz.put(akcja.getProduct(), sprzedaz.get(akcja.getProduct()) + akcja.getLiczba());
+            } else {
+                odpowiedz.setZrealizowaneZamowienie(false);
+            }
+        });
 
             if (ZamowieniaAkcje.POJEDYNCZE_ZAMOWIENIE.equals(akcja.getTyp())) {
 
-                odpowiedz.setProdukt(akcja.getProduct());
-                odpowiedz.setLiczba(akcja.getLiczba());
+                pojedynczeZamowienie.start();
+                //System.out.println("wątek pojedynczeZamowienie działa");
+                pojedynczeZamowienie.join();
+                //System.out.println("wątek pojedynczeZamowienie czeka");
 
-                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
-                if (naMagazynie >= akcja.getLiczba()) {
-                    odpowiedz.setZrealizowaneZamowienie(true);
-                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
-                    sprzedaz.put(akcja.getProduct(), sprzedaz.get(akcja.getProduct()) + akcja.getLiczba());
-                } else {
-                    odpowiedz.setZrealizowaneZamowienie(false);
-                }
+//                odpowiedz.setProdukt(akcja.getProduct());
+//                odpowiedz.setLiczba(akcja.getLiczba());
+//
+//                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+//                if (naMagazynie >= akcja.getLiczba()) {
+//                    odpowiedz.setZrealizowaneZamowienie(true);
+//                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
+//                    sprzedaz.put(akcja.getProduct(), sprzedaz.get(akcja.getProduct()) + akcja.getLiczba());
+//                } else {
+//                    odpowiedz.setZrealizowaneZamowienie(false);
+//                }
             }
 
 
@@ -189,44 +249,108 @@ public class ParallelExecutor {
                             });
                 }
             }
+
+        Thread rezerwacja = new Thread(() ->
+        {
+            odpowiedz.setProdukt(akcja.getProduct());
+            odpowiedz.setLiczba(akcja.getLiczba());
+
+            Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+
+            if (naMagazynie >= akcja.getLiczba()) {
+                odpowiedz.setZrealizowaneZamowienie(true);
+                magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
+                rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) + akcja.getLiczba());
+            } else {
+                odpowiedz.setZrealizowaneZamowienie(false);
+            }
+        });
+
             if (ZamowieniaAkcje.REZERWACJA.equals(akcja.getTyp())) {
-                odpowiedz.setProdukt(akcja.getProduct());
-                odpowiedz.setLiczba(akcja.getLiczba());
 
-                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+                rezerwacja.start();
+                //System.out.println("wątek rezerwacja dziala");
+                rezerwacja.join();
+                //System.out.println("wątek rezerwacja czeka");
 
-                if (naMagazynie >= akcja.getLiczba()) {
-                    odpowiedz.setZrealizowaneZamowienie(true);
-                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
-                    rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) + akcja.getLiczba());
-                } else {
-                    odpowiedz.setZrealizowaneZamowienie(false);
-                }
+//                odpowiedz.setProdukt(akcja.getProduct());
+//                odpowiedz.setLiczba(akcja.getLiczba());
+//
+//                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+//
+//                if (naMagazynie >= akcja.getLiczba()) {
+//                    odpowiedz.setZrealizowaneZamowienie(true);
+//                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie - akcja.getLiczba());
+//                    rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) + akcja.getLiczba());
+//                } else {
+//                    odpowiedz.setZrealizowaneZamowienie(false);
+//                }
             }
+
+        Thread odbiorRezerwacji = new Thread(() ->
+        {
+            odpowiedz.setProdukt(akcja.getProduct());
+            odpowiedz.setLiczba(akcja.getLiczba());
+
+            Long naMagazynie = rezerwacje.get(akcja.getProduct());
+
+
+            if (naMagazynie >= akcja.getLiczba()) {
+                odpowiedz.setZrealizowaneZamowienie(true);
+                rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) - akcja.getLiczba());
+            } else {
+                odpowiedz.setZrealizowaneZamowienie(false);
+            }
+        });
+
             if (ZamowieniaAkcje.ODBIÓR_REZERWACJI.equals(akcja.getTyp())) {
-                odpowiedz.setProdukt(akcja.getProduct());
-                odpowiedz.setLiczba(akcja.getLiczba());
 
-                Long naMagazynie = rezerwacje.get(akcja.getProduct());
+                odbiorRezerwacji.start();
+                //System.out.println("wątek odbior rezerwacji działa");
+                odbiorRezerwacji.join();
+                //System.out.println("wątek odbior rezerwacji czeka");
 
-
-                if (naMagazynie >= akcja.getLiczba()) {
-                    odpowiedz.setZrealizowaneZamowienie(true);
-                    rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) - akcja.getLiczba());
-                } else {
-                    odpowiedz.setZrealizowaneZamowienie(false);
-                }
+//                odpowiedz.setProdukt(akcja.getProduct());
+//                odpowiedz.setLiczba(akcja.getLiczba());
+//
+//                Long naMagazynie = rezerwacje.get(akcja.getProduct());
+//
+//
+//                if (naMagazynie >= akcja.getLiczba()) {
+//                    odpowiedz.setZrealizowaneZamowienie(true);
+//                    rezerwacje.put(akcja.getProduct(), rezerwacje.get(akcja.getProduct()) - akcja.getLiczba());
+//                } else {
+//                    odpowiedz.setZrealizowaneZamowienie(false);
+//                }
             }
+
+        Thread pojedynczeZaopatrzenie = new Thread(() ->
+        {
+            odpowiedz.setProdukt(akcja.getProduct());
+            odpowiedz.setLiczba(akcja.getLiczba());
+            Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+            odpowiedz.setZebraneZaopatrzenie(true);
+            if (magazyn.getStanMagazynowy().get(akcja.getProduct()) >= 0) {
+                magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie + akcja.getLiczba());
+            }
+        });
 
             if (ZaopatrzenieAkcje.POJEDYNCZE_ZAOPATRZENIE.equals(akcja.getTyp())) {
-                odpowiedz.setProdukt(akcja.getProduct());
-                odpowiedz.setLiczba(akcja.getLiczba());
-                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
-                odpowiedz.setZebraneZaopatrzenie(true);
-                if (magazyn.getStanMagazynowy().get(akcja.getProduct()) >= 0) {
-                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie + akcja.getLiczba());
-                }
+
+                pojedynczeZaopatrzenie.start();
+                //System.out.println("wątek pojedyncze zaopatrzenie działa");
+                pojedynczeZaopatrzenie.join();
+                //System.out.println("wątek pojedyncze zaopatrzenie czeka");
+
+//                odpowiedz.setProdukt(akcja.getProduct());
+//                odpowiedz.setLiczba(akcja.getLiczba());
+//                Long naMagazynie = magazyn.getStanMagazynowy().get(akcja.getProduct());
+//                odpowiedz.setZebraneZaopatrzenie(true);
+//                if (magazyn.getStanMagazynowy().get(akcja.getProduct()) >= 0) {
+//                    magazyn.getStanMagazynowy().put(akcja.getProduct(), naMagazynie + akcja.getLiczba());
+//                }
             }
+
             if (ZaopatrzenieAkcje.GRUPOWE_ZAOPATRZENIE.equals(akcja.getTyp())) {
                 odpowiedz.setGrupaProduktów(akcja.getGrupaProduktów());
                 odpowiedz.setZebraneZaopatrzenie(true);
