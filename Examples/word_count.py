@@ -63,49 +63,23 @@ word_count_data = ["To be, or not to be,--that is the question:--",
 
 
 def word_count(input_path, output_path):
-    t_env = TableEnvironment.create(EnvironmentSettings.in_streaming_mode())
+    t_env = TableEnvironment.create(EnvironmentSettings.in_batch_mode())
     # write all the data to one file
     t_env.get_config().set("parallelism.default", "1")
 
-    # define the source
-    if input_path is not None:
-        t_env.create_temporary_table(
-            'source',
-            TableDescriptor.for_connector('filesystem')
-                           .schema(Schema.new_builder()
-                                   .column('word', DataTypes.STRING())
-                                   .build())
-                           .option('path', input_path)
-                           .format('csv')
-                           .build())
-        tab = t_env.from_path('source')
-    else:
-        print("Executing word_count example with default input data set.")
-        print("Use --input to specify file input.")
-        tab = t_env.from_elements(map(lambda i: (i,), word_count_data),
+    tab = t_env.from_elements(map(lambda i: (i,), word_count_data),
                                   DataTypes.ROW([DataTypes.FIELD('line', DataTypes.STRING())]))
 
-    # define the sink
-    if output_path is not None:
-        t_env.create_temporary_table(
+
+    t_env.create_temporary_table(
             'sink',
             TableDescriptor.for_connector('filesystem')
                            .schema(Schema.new_builder()
                                    .column('word', DataTypes.STRING())
                                    .column('count', DataTypes.BIGINT())
                                    .build())
-                           .option('path', output_path)
+                           .option('path', 'output')
                            .format(FormatDescriptor.for_format('canal-json')
-                                   .build())
-                           .build())
-    else:
-        print("Printing result to stdout. Use --output to specify output path.")
-        t_env.create_temporary_table(
-            'sink',
-            TableDescriptor.for_connector('print')
-                           .schema(Schema.new_builder()
-                                   .column('word', DataTypes.STRING())
-                                   .column('count', DataTypes.BIGINT())
                                    .build())
                            .build())
 
@@ -114,12 +88,15 @@ def word_count(input_path, output_path):
         for s in line[0].split():
             yield Row(s)
 
+    print(tab.to_pandas())
+
     # compute word count
     tab.flat_map(split).alias('word') \
        .group_by(col('word')) \
        .select(col('word'), lit(1).count) \
        .execute_insert('sink') \
        .wait()
+
     # remove .wait if submitting to a remote cluster, refer to
     # https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/python/faq/#wait-for-jobs-to-finish-when-executing-jobs-in-mini-cluster
     # for more details
