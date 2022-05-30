@@ -11,7 +11,7 @@ def main():
     t_env.get_config().get_configuration().set_string("parallelism.default", "1")
     t_env.get_config().get_configuration().set_string("pipeline.auto-watermark-interval", "800ms")
 
-    env.add_jars("file:///home/marcin/PycharmProjects/FlinkClasses/flink-sql-connector-kafka-1.15.0.jar")
+    env.add_jars("file:/home/faculty/mw/PycharmProjects/PRS2020iuguyfv/flink-sql-connector-kafka-1.15.0.jar")
 
     src_ddl = """
         CREATE TABLE sensor (
@@ -26,7 +26,7 @@ def main():
             ) WITH (
             'connector' = 'kafka',
             'topic' = 'xiaomi_json',
-            'properties.bootstrap.servers' = 'localhost:29092',
+            'properties.bootstrap.servers' = '10.100.6.128:29092',
             'properties.group.id' = 'testGroup',
             'scan.startup.mode' = 'earliest-offset',
             'format' = 'json'
@@ -43,12 +43,11 @@ def main():
 
     # tbl.execute().print()
 
-    windowed_rev = tbl.window(Session.with_gap(lit(3).minutes)
+    windowed_rev = tbl.window(Session.with_gap(lit(3).seconds)
                               .on(tbl.event_time)
                               .alias('w')) \
-        .group_by(col('w'), tbl.temp, tbl.proctime) \
-        .select(tbl.temp,
-                tbl.event_time,
+        .group_by(col('w')) \
+        .select(tbl.temp.avg.alias('temp_avg'),
                 col('w').start.alias('window_start'),
                 col('w').end.alias('window_end'))
 

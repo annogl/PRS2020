@@ -7,7 +7,7 @@ def main():
     env = StreamExecutionEnvironment.get_execution_environment()
     t_env = StreamTableEnvironment.create(stream_execution_environment=env)
 
-    env.add_jars("file:///home/marcin/PycharmProjects/FlinkClasses/flink-sql-connector-kafka-1.15.0.jar")
+    env.add_jars("file:/home/faculty/mw/PycharmProjects/PRS2020iuguyfv/flink-sql-connector-kafka-1.15.0.jar")
 
     type_info = Types.ROW_NAMED(["temp", "moisture", "light", "conductivity", "battery"],
                                 [Types.DOUBLE(), Types.DOUBLE(), Types.INT(), Types.INT(),
@@ -17,7 +17,8 @@ def main():
     kafkaSource = FlinkKafkaConsumer(
         topics='xiaomi_json',
         deserialization_schema=deserialization_schema,
-        properties={'bootstrap.servers': 'localhost:29092', 'group.id': 'xiaomi_json'}
+        properties={'bootstrap.servers': '10.100.6.128:29092',
+                    'group.id': 'xiaomi_json'}
     )
     kafkaSource.set_start_from_earliest()
 

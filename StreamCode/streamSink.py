@@ -7,8 +7,6 @@ from pyflink.datastream.connectors import FileSink, OutputFileConfig
 def main():
     env = StreamExecutionEnvironment.get_execution_environment()
 
-    env.add_jars("file:///home/marcin/PycharmProjects/FlinkClasses/flink-sql-connector-kafka-1.15.0.jar")
-
     ds = env.from_collection(
         collection=[(1, 'aaa'), (2, 'bb'), (3, 'c')],
         type_info=Types.ROW([Types.INT(), Types.STRING()]))
